@@ -17,26 +17,28 @@ def calc_all_approx_model_FTC(sol, consts, *params):
     return np.array([C_A2, C_S + C_M, C_A, C_O])
 
 def full_model_FTC(t, vars, params):
-    alpha, beta, theta, phi, lam, m, ep, delta = params
-    cA2, cS, cO, cM = vars
-    
-    cA2 = np.clip(cA2, -1e6, 1e6)
-    cS = np.clip(cS, -1e6, 1e6)
-    cO = np.clip(cO, -1e6, 1e6)
-    cM = np.clip(cM, -1e6, 1e6)
+    """
+    Full model of the FTC's model. The model has 4 parameters: alpha, beta, theta, phi;
+    3 constants: lam, m, ep; and 3 variables: cA2, cS, cO.
+    In this model quasi-steady state approximation is not used on cO, but it is used on cM.
+    """
+    alpha, beta, theta, phi, lam, m, ep = params
+    cA2, cS, cO = vars
 
-    dcA2dt = cO * (2 * (1 - cA2) - lam * (cS + cM))**2 - alpha * cM * cA2 - theta * cA2
-    dcSdt = alpha/lam * cM * cA2 - beta * cM * cS + theta/lam * cA2 - phi * cS - 1/delta * (cS**m - cM)
-    dcMdt = 1/delta * (cS**m - cM)
-    dcOdt = 1/ep * (1 - cO * (2 * (1 - cA2) - lam * (cS + cM))**2)
+    dcA2dt = cO * (2 * (1 - cA2) - lam * (cS + cS**m))**2 - alpha * cS**m * cA2 - theta * cA2
+    dcSdt = alpha/lam * cS**m * cA2 - beta * cS**(m + 1) + theta/lam * cA2 - phi * cS
+    dcOdt = 1/ep * (1 - cO * (2 * (1 - cA2) - lam * (cS + cS**m))**2)
 
-    return dcA2dt, dcSdt, dcMdt, dcOdt
+    return dcA2dt, dcSdt, dcOdt
 
 def calc_all_full_model_FTC(sol, const, *params):
-    lam, m, ep, delta = const
-    cA2, cS, cM, cO = sol.y
-    cS_sum = cS + cM
-    cA = 2 * (1 - cA2) - lam * (cS + cM)
+    """
+    Receive the solution of the full model and return the values of cA2, cS_sum, cA, cO.
+    """
+    lam, m, ep = const
+    cA2, cS, cO = sol.y
+    cS_sum = cS + cS**m
+    cA = 2 * (1 - cA2) - lam * (cS_sum)
     return cA2, cS_sum, cA, cO
 
 def approx_model_Hill(t, vars, params):

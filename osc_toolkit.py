@@ -36,7 +36,7 @@ class oscillation:
     def add_info(self, info):
         self.__info = info
 
-    def simulate(self, t=10, t_eval='default', init_cond = None):
+    def simulate(self, t=10, t_eval='default', init_cond = None, method='RK45'):
         params_pass = np.hstack((self.__params, self.__consts))
         model_partial = partial(self.__model, params=params_pass)
         t_span = (0, t)
@@ -52,14 +52,14 @@ class oscillation:
             y0 = self.__init_cond
 
         sol = solve_ivp(model_partial, t_span=t_span,
-                        y0=y0, method='RK45', t_eval=t_eval, rtol=1e-6, atol=1e-8)
+                        y0=y0, method=method, t_eval=t_eval, rtol=1e-6, atol=1e-8)
         return sol
 
-    def plot(self, t=10, exp=False):
+    def plot(self, t=10, exp=False, method='RK45'):
         i = 0
         if exp == True:
             y0 = [np.array(self.__exp_data.iloc[0, 1]), np.array(self.__exp_data.iloc[0, 3])]
-            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=y0)
+            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=y0, method=method)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
             for ax in axes:
@@ -72,7 +72,7 @@ class oscillation:
                 i += 1
                 plt.tight_layout()
         else:
-            sol = self.simulate(t)
+            sol = self.simulate(t, method=method)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
             for ax, y in zip(axes.flatten(), c):
