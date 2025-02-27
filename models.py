@@ -63,3 +63,27 @@ def calc_all_approx_model_Hill(sol, consts, params):
     C_A = 2 * (1 - C_A2) - lam * (C_S + C_M)
     C_O = 1 / (2 * (1 - C_A2) - lam * (C_S + C_M)) ** 2
     return (C_A2, C_S + C_M, C_A, C_O)
+
+def delayed_approx_model_FTC(vars, t, td1, td2, params):
+    #td1 is shorter delay, td2 is longer delay
+    alpha, beta, theta, phi, k, lam, m = params
+    cA2, cS = vars(t)
+    cA2_td1, cS_td1 = vars(t - td1)
+    cA2_td2, cS_td2 = vars(t - td2)
+
+    cT1 = cS_td1**m
+    cT2 = cS_td2**m
+
+    dcA2dt = (2 * (1 - cA2) - lam * (cS + cS**m))**2 / ((2 * (1 - cA2) - lam * (cS + cS**m))**2 + k * cT2**2) - alpha * cA2 * cT1 - theta * cA2
+    dcSdt = alpha/lam * cA2 * cT1 - beta * cT1 * cS + theta/lam * cA2 - phi * cS
+    
+    return np.array((dcA2dt, dcSdt))
+
+def calc_all_delayed_approx_model_FTC(sol, consts, *params):
+    lam, m = consts
+    cA2 = sol[:, 0]
+    cS = sol[:, 1]
+    cM = cS ** m
+    cA = 2 * (1 - cA2) - lam * (cS + cM)
+    cO = 1 / (2 * (1 - cA2) - lam * (cS + cM)) ** 2
+    return np.array([cA2, cS + cM, cA, cO])
