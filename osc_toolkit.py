@@ -9,7 +9,6 @@ from functools import partial
 import pandas as pd
 from IPython.display import display
 import ipywidgets as widgets
-from ddeint import ddeint
 
 class oscillation:
     def __init__(self, model, params, consts, init_cond, calc_all):
@@ -63,10 +62,11 @@ class oscillation:
             sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=y0, method=method)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
+            color = ['purple', 'b', 'r', 'g']
             for ax in axes:
                 ax.plot(
-                    self.__exp_data.iloc[:, 2*i], self.__exp_data.iloc[:, 2*i+1], label=f'exp-{self.__species[i]}')
-                ax.plot(sol.t, c[i], label=self.__species[i])
+                    self.__exp_data.iloc[:, 2*i], self.__exp_data.iloc[:, 2*i+1], label=f'exp_{self.__species[i]}', color=color[i])
+                ax.plot(sol.t, c[i], label=self.__species[i], linestyle='--', color=color[i])
                 ax.set_xlabel('Normalized Time')
                 ax.set_ylabel('Normalized Concentration')
                 ax.legend(loc="upper right")
@@ -77,30 +77,30 @@ class oscillation:
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
             for ax, y in zip(axes.flatten(), c):
-                ax.plot(sol.t, y, label=self.__species[i])
+                ax.plot(sol.t, y, label=self.__species[i], color=color[i])
                 ax.set_xlabel('Normalized Time')
                 ax.set_ylabel('Normalized Concentration')
                 ax.legend(loc="upper right")
                 i += 1
                 plt.tight_layout()
 
-        return fig, ax
+        return fig, axes
 
-    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False):
+    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None):
 
         if len(self.__params) == 4:
             def plot_temp(alpha, beta, theta, phi):
                 params = [alpha, beta, theta, phi]
                 params_old = self.__params
                 self.__params = params
-                self.plot(t, exp=exp)
+                self.plot(t, exp=exp, ylim=ylim)
                 self.__params = params_old
         elif len(self.__params) == 5:
             def plot_temp(alpha, beta, theta, phi, K):
                 params = [alpha, beta, theta, phi, K]
                 params_old = self.__params
                 self.__params = params
-                self.plot(t, exp=exp)
+                self.plot(t, exp=exp, ylim=ylim)
                 self.__params = params_old
 
         params_list = ['alpha', 'beta', 'theta', 'phi', 'K']
@@ -203,8 +203,9 @@ class delayed_oscillation(oscillation):
 
         return (sol, t_eval)
     
-    def plot(self, t=10, exp=False):
+    def plot(self, t=10, exp=False, ylim=None):
         i = 0
+        color = ['purple', 'b', 'r', 'g']
         if exp == True:
             y0 = [np.array(self._oscillation__exp_data.iloc[0, 1]), np.array(self._oscillation__exp_data.iloc[0, 3])]
             sol, t = self.simulate(t=self._oscillation__exp_data.iloc[-1, 0], init_cond=y0)
@@ -212,8 +213,10 @@ class delayed_oscillation(oscillation):
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
             for ax in axes:
                 ax.plot(
-                    self._oscillation__exp_data.iloc[:, 2*i], self._oscillation__exp_data.iloc[:, 2*i+1], label=f'exp-{self._oscillation__species[i]}')
-                ax.plot(t, c[i], label=self._oscillation__species[i])
+                    self._oscillation__exp_data.iloc[:, 2*i], self._oscillation__exp_data.iloc[:, 2*i+1], label=f'exp-{self._oscillation__species[i]}', color=color[i])
+                ax.plot(t, c[i], label=self._oscillation__species[i], linestyle='--', color=color[i])
+                if ylim != None:
+                    ax.set_ylim(0, ylim)
                 ax.set_xlabel('Normalized Time')
                 ax.set_ylabel('Normalized Concentration')
                 ax.legend(loc="upper right")
@@ -224,7 +227,9 @@ class delayed_oscillation(oscillation):
             c = self._oscillation__calc_all(sol, self._oscillation__consts, self._oscillation__params)
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
             for ax, y in zip(axes.flatten(), c):
-                ax.plot(t, y, label=self._oscillation__species[i])
+                ax.plot(t, y, label=self._oscillation__species[i], color=color[i])
+                if ylim != None:
+                    ax.set_ylim(0, ylim)
                 ax.set_xlabel('Normalized Time')
                 ax.set_ylabel('Normalized Concentration')
                 ax.legend(loc="upper right")

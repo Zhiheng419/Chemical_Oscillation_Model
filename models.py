@@ -71,11 +71,13 @@ def delayed_approx_model_FTC(vars, t, td1, td2, params):
     cA2_td1, cS_td1 = vars(t - td1)
     cA2_td2, cS_td2 = vars(t - td2)
 
+    cS = max(1e-6, cS)
+
     cT1 = cS_td1**m
     cT2 = cS_td2**m
 
-    dcA2dt = (2 * (1 - cA2) - lam * (cS + cS**m))**2 / ((2 * (1 - cA2) - lam * (cS + cS**m))**2 + k * cT2**2) - alpha * cA2 * cT1 - theta * cA2
-    dcSdt = alpha/lam * cA2 * cT1 - beta * cT1 * cS + theta/lam * cA2 - phi * cS
+    dcA2dt = 1 - alpha * cA2 * cT2 - theta * cA2
+    dcSdt = alpha/lam * cA2 * cT2 - beta * cT1 * cS + theta/lam * cA2 - phi * cS
     
     return np.array((dcA2dt, dcSdt))
 
