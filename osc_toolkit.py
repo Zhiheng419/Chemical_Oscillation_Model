@@ -36,6 +36,12 @@ class oscillation:
     def add_info(self, info):
         self.__info = info
 
+    def set_params(self, params):
+        self.__params = params
+
+    def set_consts(self, consts):
+        self.__consts = consts
+
     def simulate(self, t=10, t_eval='default', init_cond = None, method='RK45'):
         params_pass = np.hstack((self.__params, self.__consts))
         model_partial = partial(self.__model, params=params_pass)
@@ -57,12 +63,12 @@ class oscillation:
 
     def plot(self, t=10, exp=False, method='RK45'):
         i = 0
+        color = ['purple', 'b', 'r', 'g']
         if exp == True:
             y0 = [np.array(self.__exp_data.iloc[0, 1]), np.array(self.__exp_data.iloc[0, 3])]
             sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=y0, method=method)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
-            color = ['purple', 'b', 'r', 'g']
             for ax in axes:
                 ax.plot(
                     self.__exp_data.iloc[:, 2*i], self.__exp_data.iloc[:, 2*i+1], label=f'exp_{self.__species[i]}', color=color[i])
