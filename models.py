@@ -1,4 +1,6 @@
 import numpy as np
+from jitcdde import jitcdde, y, t, jitcdde_input
+from symengine import symbols
 def approx_model_FTC(t, vars, params):
     alpha, beta, theta, phi, lam, m = params
     C_A2, C_S = vars
@@ -64,22 +66,14 @@ def calc_all_approx_model_Hill(sol, consts, params):
     C_O = 1 / (2 * (1 - C_A2) - lam * (C_S + C_M)) ** 2
     return (C_A2, C_S + C_M, C_A, C_O)
 
-def delayed_approx_model_FTC(vars, t, td1, td2, params):
-    #td1 is shorter delay, td2 is longer delay
-    alpha, beta, theta, phi, k, lam, m = params
-    cA2, cS = vars(t)
-    cA2_td1, cS_td1 = vars(t - td1)
-    cA2_td2, cS_td2 = vars(t - td2)
+def delayed_approx_model_FTC(delays):
+    td1, td2 = delays
+    alpha, beta, theta, phi, lam, m = symbols('alpha beta theta phi lam m')
+    dcA2dt = 1 - alpha * y(0) * y(1, t-td2)**m - theta * y(0)
+    dcSdt = alpha/lam * y(0) * y(1, t-td2)**m - beta * y(1, t-td1)**m + theta/lam * y(0) - phi * y(1)
+    dde = jitcdde([dcA2dt, dcSdt], control_pars=[alpha, beta, theta, phi, lam, m])
+    return dde
 
-    cS = max(1e-6, cS)
-
-    cT1 = cS_td1**m
-    cT2 = cS_td2**m
-
-    dcA2dt = 1 - alpha * cA2 * cT2 - theta * cA2
-    dcSdt = alpha/lam * cA2 * cT2 - beta * cT1 * cS + theta/lam * cA2 - phi * cS
-    
-    return np.array((dcA2dt, dcSdt))
 
 def calc_all_delayed_approx_model_FTC(sol, consts, *params):
     lam, m = consts
