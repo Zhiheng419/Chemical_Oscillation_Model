@@ -63,7 +63,7 @@ class oscillation:
                         y0=y0, method=method, t_eval=t_eval, rtol=1e-6, atol=1e-8)
         return sol
 
-    def plot(self, t=10, exp=False, method='RK45'):
+    def plot(self, t=10, exp=False, method='RK45', ylim=None):
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
@@ -103,6 +103,7 @@ class oscillation:
                 self.__params = params
                 self.plot(t, exp=exp, ylim=ylim)
                 self.__params = params_old
+                print(params)
         elif len(self.__params) == 5:
             def plot_temp(alpha, beta, theta, phi, K):
                 params = [alpha, beta, theta, phi, K]
@@ -110,6 +111,7 @@ class oscillation:
                 self.__params = params
                 self.plot(t, exp=exp, ylim=ylim)
                 self.__params = params_old
+                print(params)
 
         params_list = ['alpha', 'beta', 'theta', 'phi', 'K']
         sliders = []
@@ -123,7 +125,6 @@ class oscillation:
             interactive_widget = widgets.interactive(plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3])
         elif len(self.__params) == 5:
             interactive_widget = widgets.interactive(plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4])
-        
         display(interactive_widget)
 
     def add_exp_data(self, exp_data):
@@ -193,18 +194,17 @@ class delayed_oscillation(oscillation):
         self.__delay = delay
         self.dde = self._oscillation__model(self.__delay)
 
-    def simulate(self, t=10, exp=False):
+    def simulate(self, t=10, exp=False, nvars=2):
         params_pass = np.hstack(
             (self._oscillation__params, self._oscillation__consts))
         
         if exp == True:
-            y0 = np.array([self._oscillation__exp_data.iloc[0, 1],
-                  self._oscillation__exp_data.iloc[0, 3]])
+            y0 = np.array([self._oscillation__exp_data.iloc[0, i] for i in range(1, int(nvars*2), 2)])
             t_end = self._oscillation__exp_data.iloc[-1, 0]
-            t_eval = np.linspace(0, t_end, int(30*t_end))
+            t_eval = np.linspace(0, t_end, int(70*t_end))
             self.dde.constant_past(y0)
         else:
-            t_eval = np.linspace(0, t, int(30*t))
+            t_eval = np.linspace(0, t, int(70*t))
             self.dde.constant_past(self._oscillation__init_cond)
 
         self.dde.reset_integrator()
@@ -215,14 +215,14 @@ class delayed_oscillation(oscillation):
 
         return (sol, t_eval)
 
-    def plot(self, t=10, exp=False, ylim=None):
+    def plot(self, t=10, exp=False, ylim=None, nvars=2):
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
-            sol, t = self.simulate(exp=exp)
+            sol, t = self.simulate(exp=exp, nvars=nvars)
             c = self._oscillation__calc_all(
                 sol, self._oscillation__consts, self._oscillation__params)
-            fig, axes = plt.subplots(2, 1, figsize=(5, 5))
+            fig, axes = plt.subplots(nvars, 1, figsize=(5, 2 * nvars))
             for ax in axes:
                 #Expereimental data
                 ax.plot(
@@ -239,7 +239,7 @@ class delayed_oscillation(oscillation):
                 i += 1
                 plt.tight_layout()
         else:
-            sol, t = self.simulate(t, exp=exp)
+            sol, t = self.simulate(t, exp=exp, nvars=nvars)
             c = self._oscillation__calc_all(
                 sol, self._oscillation__consts, self._oscillation__params)
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
@@ -256,21 +256,23 @@ class delayed_oscillation(oscillation):
                 plt.tight_layout()
         return fig, axes
 
-    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None):
+    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2):
         if len(self._oscillation__params) == 4:
             def plot_temp(alpha, beta, theta, phi):
                 params = [alpha, beta, theta, phi]
                 params_old = self._oscillation__params
                 self.set_params(params)
-                self.plot(t, exp=exp, ylim=ylim)
+                self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
                 self.set_params(params_old)
+                print(params)
         elif len(self._oscillation__params) == 5:
             def plot_temp(alpha, beta, theta, phi, K):
                 params = [alpha, beta, theta, phi, K]
                 params_old = self._oscillation__params
                 self.set_params(params)
-                self.plot(t, exp=exp, ylim=ylim)
+                self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
                 self.set_params(params_old)
+                print(params)
 
         params_list = ['alpha', 'beta', 'theta', 'phi', 'K']
         sliders = []
