@@ -13,6 +13,7 @@ from jitcdde import jitcdde, y, t, jitcdde_input
 from symengine import symbols
 
 class oscillation:
+    # Initializations
     def __init__(self, model, params, consts, init_cond, calc_all):
 
         # Model and parameters
@@ -29,6 +30,7 @@ class oscillation:
         # Experimental data
         self.__exp_data = None
 
+    # Modify the properties
     @property
     def info(self):
         print(
@@ -43,6 +45,24 @@ class oscillation:
 
     def set_consts(self, consts):
         self.__consts = consts
+    
+    def set_species(self, species):
+        self.__species = species
+
+    def set_init_cond(self, init_cond):
+        self.__init_cond = init_cond
+
+    def add_exp_data(self, exp_data):
+        print(
+            f'The species are {self.__species}. Please check if the data is in the same order and correct format (time, concentration).')
+        self.__exp_data = exp_data
+        self.__init_cond = np.array([self._oscillation__exp_data.iloc[0, i] for i in range(1, exp_data.shape[1], 2)])
+        print(f'Initial condition is set as {self.__init_cond}')
+
+    def set_params(self, params):
+        self.__params = params
+
+    # Simulation and visualization
 
     def simulate(self, t=10, t_eval='default', init_cond = None, method='RK45'):
         params_pass = np.hstack((self.__params, self.__consts))
@@ -67,8 +87,7 @@ class oscillation:
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
-            y0 = [np.array(self.__exp_data.iloc[0, 1]), np.array(self.__exp_data.iloc[0, 3])]
-            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=y0, method=method)
+            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=self.__init_cond, method=method)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
             for ax in axes:
@@ -91,7 +110,6 @@ class oscillation:
                 ax.legend(loc="upper right")
                 i += 1
                 plt.tight_layout()
-
         return fig, axes
 
     def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None):
@@ -127,15 +145,7 @@ class oscillation:
             interactive_widget = widgets.interactive(plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4])
         display(interactive_widget)
 
-    def add_exp_data(self, exp_data):
-        print(
-            f'The species are {self.__species}. Please check if the data is in the same order and correct format (time, concentration).')
-        data = exp_data.clip(lower=0)
-        self.__exp_data = data
-
-    def set_params(self, params):
-        self.__params = params
-
+    # Fitting
     def fit(self, plot=False, overwrite=False):
         tA2 = np.array(self.__exp_data.iloc[:, 0])
         cA2 = np.array(self.__exp_data.iloc[:, 1])
@@ -159,8 +169,7 @@ class oscillation:
 
             penalty = 1e10 * np.sum(np.minimum(self.__params, 0) ** 2)
 
-            obj = np.sum((c_all_A2[0] - cA2)**2 +
-                         (c_all_S[1] - cS)**2) + penalty
+            obj = np.sum((c_all_A2[0] - cA2)**2 + (c_all_S[1] - cS)**2) + penalty
             return obj
 
         params_old = self.__params
@@ -176,7 +185,8 @@ class oscillation:
         if overwrite == False:
             self.__params = params_old
         return opt_result
-    
+
+
 class delayed_oscillation(oscillation):
     def __init__(self, model, delay, params, consts, init_cond, calc_all):
         super().__init__(model, params, consts, init_cond, calc_all)
@@ -199,10 +209,9 @@ class delayed_oscillation(oscillation):
             (self._oscillation__params, self._oscillation__consts))
         
         if exp == True:
-            y0 = np.array([self._oscillation__exp_data.iloc[0, i] for i in range(1, int(nvars*2), 2)])
             t_end = self._oscillation__exp_data.iloc[-1, 0]
             t_eval = np.linspace(0, t_end, int(70*t_end))
-            self.dde.constant_past(y0)
+            self.dde.constant_past(self._oscillation__init_cond)
         else:
             t_eval = np.linspace(0, t, int(70*t))
             self.dde.constant_past(self._oscillation__init_cond)
@@ -229,12 +238,12 @@ class delayed_oscillation(oscillation):
                     self._oscillation__exp_data.iloc[:, 2*i], self._oscillation__exp_data.iloc[:, 2*i+1],
                     label=f'exp-{self._oscillation__species[i]}', color=color[i])
                 #Simulation
-                ax.plot(t, c[i], label=self._oscillation__species[i],
+                ax.plot(t, c[i], label=f'sim-{self._oscillation__species[i]}',
                         linestyle='--', color=color[i])
                 if ylim != None:
                     ax.set_ylim(0, ylim)
                 ax.set_xlabel('Normalized Time')
-                ax.set_ylabel('Normalized Concentration')
+                ax.set_ylabel('Normalized Conc')
                 ax.legend(loc="upper right")
                 i += 1
                 plt.tight_layout()
@@ -250,7 +259,7 @@ class delayed_oscillation(oscillation):
                 if ylim != None:
                     ax.set_ylim(0, ylim)
                 ax.set_xlabel('Normalized Time')
-                ax.set_ylabel('Normalized Concentration')
+                ax.set_ylabel('Normalized Conc')
                 ax.legend(loc="upper right")
                 i += 1
                 plt.tight_layout()
