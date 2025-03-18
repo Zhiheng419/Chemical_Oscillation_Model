@@ -51,6 +51,7 @@ class oscillation:
 
     def set_init_cond(self, init_cond):
         self.__init_cond = init_cond
+        print(f'Initial condition is set as {self.__init_cond}')
 
     def add_exp_data(self, exp_data):
         print(
@@ -64,13 +65,12 @@ class oscillation:
 
     # Simulation and visualization
 
-    def simulate(self, t=10, t_eval='default', init_cond = None, method='RK45'):
+    def simulate(self, t=10, npoints=500, init_cond=None, method='RK45'):
         params_pass = np.hstack((self.__params, self.__consts))
         model_partial = partial(self.__model, params=params_pass)
         t_span = (0, t)
 
-        if type(t_eval) == str:
-            t_eval = np.linspace(0, t, 500)
+        t_eval = np.linspace(0, t, npoints)
 
         #Default: initial condition is passed by the property. It can also be passed by external input
 
@@ -83,33 +83,34 @@ class oscillation:
                         y0=y0, method=method, t_eval=t_eval, rtol=1e-6, atol=1e-8)
         return sol
 
-    def plot(self, t=10, exp=False, method='RK45', ylim=None):
+    def plot(self, t=10, exp=False, method='RK45', ylim=None, npoints=500):
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
-            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=self.__init_cond, method=method)
+            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=self.__init_cond, method=method, npoints=npoints)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
             for ax in axes:
                 ax.plot(
                     self.__exp_data.iloc[:, 2*i], self.__exp_data.iloc[:, 2*i+1], label=f'exp_{self.__species[i]}', color=color[i])
                 ax.plot(sol.t, c[i], label=self.__species[i], linestyle='--', color=color[i])
-                ax.set_xlabel('Normalized Time')
-                ax.set_ylabel('Normalized Concentration')
+                
                 ax.legend(loc="upper right")
                 i += 1
-                plt.tight_layout()
+            fig.supxlabel('Normalized Time')
+            fig.supylabel('Normalized Concentration')
+            plt.tight_layout()
         else:
-            sol = self.simulate(t, method=method)
+            sol = self.simulate(t, method=method, npoints=npoints)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
             for ax, y in zip(axes.flatten(), c):
                 ax.plot(sol.t, y, label=self.__species[i], color=color[i])
-                ax.set_xlabel('Normalized Time')
-                ax.set_ylabel('Normalized Concentration')
                 ax.legend(loc="upper right")
                 i += 1
-                plt.tight_layout()
+            fig.supxlabel('Normalized Time')
+            fig.supylabel('Normalized Concentration')
+            plt.tight_layout()
         return fig, axes
 
     def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None):
@@ -242,11 +243,11 @@ class delayed_oscillation(oscillation):
                         linestyle='--', color=color[i])
                 if ylim != None:
                     ax.set_ylim(0, ylim)
-                ax.set_xlabel('Normalized Time')
-                ax.set_ylabel('Normalized Conc')
                 ax.legend(loc="upper right")
                 i += 1
-                plt.tight_layout()
+            fig.supxlabel('Normalized Time')
+            fig.supylabel('Normalized Conc')
+            plt.tight_layout()
         else:
             sol, t = self.simulate(t, exp=exp, nvars=nvars)
             c = self._oscillation__calc_all(
@@ -258,11 +259,11 @@ class delayed_oscillation(oscillation):
                     t, y, label=self._oscillation__species[i], color=color[i])
                 if ylim != None:
                     ax.set_ylim(0, ylim)
-                ax.set_xlabel('Normalized Time')
-                ax.set_ylabel('Normalized Conc')
                 ax.legend(loc="upper right")
                 i += 1
-                plt.tight_layout()
+            fig.supxlabel('Normalized Time')
+            fig.supylabel('Normalized Conc')
+            plt.tight_layout()
         return fig, axes
 
     def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2):
@@ -282,8 +283,16 @@ class delayed_oscillation(oscillation):
                 self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
                 self.set_params(params_old)
                 print(params)
+        elif len(self._oscillation__params) == 6:
+            def plot_temp(alpha, beta, theta, phi, K, kappa):
+                params = [alpha, beta, theta, phi, K, kappa]
+                params_old = self._oscillation__params
+                self.set_params(params)
+                self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
+                self.set_params(params_old)
+                print(params)
 
-        params_list = ['alpha', 'beta', 'theta', 'phi', 'K']
+        params_list = ['alpha', 'beta', 'theta', 'phi', 'k', 'kappa']
         sliders = []
 
         for i in range(len(self._oscillation__params)):
@@ -297,5 +306,7 @@ class delayed_oscillation(oscillation):
         elif len(self._oscillation__params) == 5:
             interactive_widget = widgets.interactive(
                 plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4])
-
+        elif len(self._oscillation__params) == 6:
+            interactive_widget = widgets.interactive(
+                plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4], kappa=sliders[5])
         display(interactive_widget)
