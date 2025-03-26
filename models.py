@@ -6,7 +6,7 @@ from symengine import symbols
 This .py file defines the reaction kinetic models in the project. The models includes non-delayed and time-delayed models.
 The models are encupsulated in dictionaries in the format of: reaction_model = {'model': model_function, 'calc_all': calc_all_function, 'info': info_string}.
 The model_function is the kinetic model defined by ODEs. The calc_all_function is used to calculate the concentrations of all species.
-The info_string gives the numbers and names of parameters, constants, delays and species in the model.
+The info_string gives the numbers and names of parameters, constants, delays (if needed) and species in the model.
 """
 
 # Non delayed models
