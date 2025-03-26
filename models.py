@@ -2,7 +2,15 @@ import numpy as np
 from jitcdde import jitcdde, y, t
 from symengine import symbols
 
+"""Introduction
+This .py file defines the reaction kinetic models in the project. The models includes non-delayed and time-delayed models.
+The models are encupsulated in dictionaries in the format of: reaction_model = {'model': model_function, 'calc_all': calc_all_function, 'info': info_string}.
+The model_function is the kinetic model defined by ODEs. The calc_all_function is used to calculate the concentrations of all species.
+The info_string gives the numbers and names of parameters, constants, delays and species in the model.
+"""
+
 # Non delayed models
+# ------------------ Approx FTC model ------------------#
 
 
 def approx_model_FTC(t, vars, params):
@@ -22,6 +30,13 @@ def calc_all_approx_model_FTC(sol, consts, *params):
     C_A = 2 * (1 - C_A2) - lam * (C_S + C_M)
     C_O = 1 / (2 * (1 - C_A2) - lam * (C_S + C_M)) ** 2
     return np.array([C_A2, C_S + C_M, C_A, C_O])
+
+
+approx_FTC = {'model': approx_model_FTC, 'calc_all': calc_all_approx_model_FTC,
+              'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m, 2 vars: cA2, cS'}
+# ------------------------------------------------------#
+
+# ------------------ Full FTC model ------------------#
 
 
 def full_model_FTC(t, vars, params):
@@ -54,8 +69,13 @@ def calc_all_full_model_FTC(sol, const, *params):
     cA = 2 * (1 - cA2) - lam * (cS_sum)
     return cA2, cS_sum, cA, cO
 
-full_FTC = {'model': full_model_FTC, 'calc_all': calc_all_full_model_FTC, 
+
+full_FTC = {'model': full_model_FTC, 'calc_all': calc_all_full_model_FTC,
             'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
+# ------------------------------------------------------#
+
+# ------------------ Full FTC first order model ------------------#
+
 
 def full_model_FTC_first_order(t, vars, params):
     """
@@ -76,8 +96,13 @@ def full_model_FTC_first_order(t, vars, params):
 
     return dcA2dt, dcSdt, dcOdt
 
+
 full_FTC_first_order = {'model': full_model_FTC_first_order, 'calc_all': calc_all_full_model_FTC,
                         'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
+# ------------------------------------------------------#
+
+# ------------------ Full FTC model with Hill function ------------------#
+
 
 def approx_model_Hill(t, vars, params):
     def Hill(x, m, k):
@@ -105,15 +130,13 @@ def calc_all_approx_model_Hill(sol, consts, params):
     return (C_A2, C_S + C_M, C_A, C_O)
 
 
-def approx_model_with_const(t, vars, params):
-    alpha, beta, theta, phi, k, lam, m = params
-    C_A2, C_S = vars
-    dC_A2dt = 1 - alpha * C_A2 * C_S**m - theta * C_A2
-    dC_Sdt = alpha/lam * C_A2 * C_S**m - beta * \
-        C_S**m + theta/lam * C_A2 - phi * C_S
-    return (dC_A2dt, dC_Sdt)
+approx_Hill = {'model': approx_model_Hill, 'calc_all': calc_all_approx_model_Hill,
+               'info': '5 params: alpha, beta, theta, phi, k. 3 consts: lam, m, cmc 2 vars: cA2, cS'}
+# ------------------------------------------------------#
 
 # Delayed models realized with jitcdde
+
+# ------------------ Delayed approx FTC model ------------------#
 
 
 def delayed_approx_model_FTC(delays):
@@ -135,6 +158,13 @@ def calc_all_delayed_approx_model_FTC(sol, consts, *params):
     cA = 2 * (1 - cA2) - lam * (cS + cM)
     cO = 1 / (2 * (1 - cA2) - lam * (cS + cM)) ** 2
     return np.array([cA2, cS + cM, cA, cO])
+
+
+delayed_approx_FTC = {'model': delayed_approx_model_FTC, 'calc_all': calc_all_delayed_approx_model_FTC,
+                      'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m. 2 delays: td1, td2. 2 vars: cA2, cS.'}
+# ------------------------------------------------------#
+
+# ------------------ Delayed full FTC model ------------------#
 
 
 def delayed_full_model(delays):
@@ -160,6 +190,13 @@ def calc_all_delayed_full_model(sol, consts, *params):
     return np.array([cA2, cS + cM, cA, cO])
 
 
+delayed_full_FTC = {'model': delayed_full_model, 'calc_all': calc_all_delayed_full_model,
+                    'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m. 2 delays: td1, td2. 3 vars: cA2, cS, cO'}
+# ------------------------------------------------------#
+
+# ------------------ Delayed full FTC model with Hill function ------------------#
+
+
 def delayed_full_first_order_model(delays):
     td1, td2 = delays
     alpha, beta, theta, phi, lam, m = symbols('alpha beta theta phi lam m')
@@ -175,6 +212,9 @@ def delayed_full_first_order_model(delays):
 
 delayed_full_first_order = {'model': delayed_full_first_order_model, 'calc_all': calc_all_delayed_full_model,
                             'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
+# ------------------------------------------------------#
+
+# ------------------ Delayed full FTC model with oxidant consumption ------------------#
 
 
 def delayed_full_model_consumeO(delays):
@@ -199,6 +239,13 @@ def calc_all_delayed_full_model_consumeO(sol, consts, *params):
     cM = cS ** m
     cA = 2 * (1 - cA2) - lam * (cS + cM)
     return np.array([cA2, cS + cM, cA, cO])
+
+
+delayed_full_FTC_consumeO = {'model': delayed_full_model_consumeO, 'calc_all': calc_all_delayed_full_model_consumeO,
+                             'info': '5 params: alpha, beta, theta, phi, k. 2 consts: lam, m. 2 delays: td1, td2. 3 vars: cA2, cS, cO'}
+# ------------------------------------------------------#
+
+# ------------------ Delayed approx FTC model with Hill function ------------------#
 
 
 def delayed_approx_model_Hill(delays):
@@ -230,6 +277,13 @@ def calc_all_delayed_approx_model_Hill(sol, consts, params):
     C_A = 2 * (1 - C_A2) - lam * (C_S + C_M)
     C_O = 1 / (2 * (1 - C_A2) - lam * (C_S + C_M)) ** 2
     return (C_A2, C_S + C_M, C_A, C_O)
+
+
+delayed_approx_Hill = {'model': delayed_approx_model_Hill, 'calc_all': calc_all_delayed_approx_model_Hill,
+                       'info': '5 params: alpha, beta, theta, phi, k. 3 consts: lam, m, cmc. 2 vars: cA2, cS'}
+# ------------------------------------------------------#
+
+# ------------------ Delayed full FTC model with Hill function and oxidant consumption ------------------#
 
 
 def delayed_full_model_Hill_consumeO(delays):
@@ -265,3 +319,8 @@ def calc_all_delayed_full_model_Hill_consumeO(sol, consts, params):
     cM = 1/ep * Hill(cS, m, k)
     cA = 2 * (1 - cA2) - lam * (cS + cM)
     return np.array([cA2, cS + cM, cA, cO])
+
+
+delayed_full_FTC_Hill_consumeO = {'model': delayed_full_model_Hill_consumeO, 'calc_all': calc_all_delayed_full_model_Hill_consumeO,
+                                  'info': '6 params: alpha, beta, theta, phi, k, kappa. 3 consts: lam, m, cmc. 2 delays: td1, td2. 3 vars: cA2, cS, cO'}
+# ------------------------------------------------------#

@@ -1,31 +1,30 @@
-# To define an oscillation class, required properties are model (model), parameters (params), constants (consts) and the conservative relations of species (calc_all)
-# Format of calc_all: calc_all(sol: solution of solve_ivp, consts: np.array) -> all concentrations: np.array
-# Species are strictly in the order of (A2, S, A, O)
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from functools import partial
-import pandas as pd
 from IPython.display import display
 import ipywidgets as widgets
-from jitcdde import jitcdde, y, t, jitcdde_input
-from symengine import symbols
+import pandas as pd
+
+
+#-----------Non-delayed oscillation model-----------#
+
 
 class oscillation:
     # Initializations
-    def __init__(self, model, params, consts, init_cond, calc_all):
+    def __init__(self, model: dict, params: list | np.ndarray, consts: list | np.ndarray, init_cond: list | np.ndarray):
 
         # Model and parameters
-        self.__model = model
+        self.__model = model['model']
         self.__params = params
         self.__consts = consts
-        self.__calc_all = calc_all
+        self.__calc_all = model['calc_all']
         self.__init_cond = init_cond
 
         # Essential information
         self.__species = ['A2', 'S_sum', 'A', 'O']
-        self.__info = None
+        self.__info = model['info']
 
         # Experimental data
         self.__exp_data = None
@@ -37,43 +36,42 @@ class oscillation:
             f'The model includes {len(self.__params)} parameters and {len(self.__consts)} constants. The species are {self.__species}. Initial condition: {self.__init_cond}')
         print(f'Additional information: {self.__info}')
 
-    def add_info(self, info):
+    def add_info(self, info: str):
         self.__info = info
 
-    def set_params(self, params):
+    def set_params(self, params: list | np.ndarray):
         self.__params = params
 
-    def set_consts(self, consts):
+    def set_consts(self, consts: list | np.ndarray):
         self.__consts = consts
-    
-    def set_species(self, species):
+
+    def set_species(self, species: list[str]):
         self.__species = species
 
-    def set_init_cond(self, init_cond):
+    def set_init_cond(self, init_cond: list | np.ndarray):
         self.__init_cond = init_cond
         print(f'Initial condition is set as {self.__init_cond}')
 
-    def add_exp_data(self, exp_data):
+    def add_exp_data(self, exp_data: pd.DataFrame):
         print(
             f'The species are {self.__species}. Please check if the data is in the same order and correct format (time, concentration).')
         self.__exp_data = exp_data
-        self.__init_cond = np.array([self._oscillation__exp_data.iloc[0, i] for i in range(1, exp_data.shape[1], 2)])
+        self.__init_cond = np.array(
+            [self._oscillation__exp_data.iloc[0, i] for i in range(1, exp_data.shape[1], 2)])
         print(f'Initial condition is set as {self.__init_cond}')
-
-    def set_params(self, params):
-        self.__params = params
 
     # Simulation and visualization
 
     def simulate(self, t=10, npoints=500, init_cond=None, method='RK45'):
+        """
+        Solve the kinetic model, return scipy.integrate.solve_ivp solution
+        """
         params_pass = np.hstack((self.__params, self.__consts))
         model_partial = partial(self.__model, params=params_pass)
         t_span = (0, t)
-
         t_eval = np.linspace(0, t, npoints)
 
-        #Default: initial condition is passed by the property. It can also be passed by external input
-
+        # Default: initial condition is passed by the property. It can also be passed by external input
         if isinstance(init_cond, (np.ndarray, list, tuple)):
             y0 = init_cond
         else:
@@ -87,16 +85,20 @@ class oscillation:
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
-            sol = self.simulate(t=self.__exp_data.iloc[-1, 0], init_cond=self.__init_cond, method=method, npoints=npoints)
+            sol = self.simulate(
+                t=self.__exp_data.iloc[-1, 0], init_cond=self.__init_cond, method=method, npoints=npoints)
             c = self.__calc_all(sol, self.__consts, self.__params)
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
             for ax in axes:
                 ax.plot(
                     self.__exp_data.iloc[:, 2*i], self.__exp_data.iloc[:, 2*i+1], label=f'exp_{self.__species[i]}', color=color[i])
-                ax.plot(sol.t, c[i], label=self.__species[i], linestyle='--', color=color[i])
-                
+                ax.plot(sol.t, c[i], label=self.__species[i],
+                        linestyle='--', color=color[i])
+                if ylim != None:
+                    ax.set_ylim(0, ylim)
                 ax.legend(loc="upper right")
                 i += 1
+
             fig.supxlabel('Normalized Time')
             fig.supylabel('Normalized Concentration')
             plt.tight_layout()
@@ -106,15 +108,17 @@ class oscillation:
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
             for ax, y in zip(axes.flatten(), c):
                 ax.plot(sol.t, y, label=self.__species[i], color=color[i])
+                if ylim != None:
+                    ax.set_ylim(0, ylim)
                 ax.legend(loc="upper right")
                 i += 1
+                
             fig.supxlabel('Normalized Time')
             fig.supylabel('Normalized Concentration')
             plt.tight_layout()
         return fig, axes
 
     def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None):
-
         if len(self.__params) == 4:
             def plot_temp(alpha, beta, theta, phi):
                 params = [alpha, beta, theta, phi]
@@ -139,15 +143,22 @@ class oscillation:
             slider = widgets.FloatSlider(value=self.__params[i], min=max(
                 0, self.__params[i]-ran), max=self.__params[i]+ran, step=step, description=params_list[i])
             sliders.append(slider)
-        
+
         if len(self.__params) == 4:
-            interactive_widget = widgets.interactive(plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3])
+            interactive_widget = widgets.interactive(
+                plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3])
         elif len(self.__params) == 5:
-            interactive_widget = widgets.interactive(plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4])
+            interactive_widget = widgets.interactive(
+                plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4])
         display(interactive_widget)
 
     # Fitting
     def fit(self, plot=False, overwrite=False):
+        """
+        Fit the kinetic parameters to the experimental data by minimum square method. 
+
+        Options: plot: plot the simulation with the experimental data. overwrite: overwrite the parameters
+        """
         tA2 = np.array(self.__exp_data.iloc[:, 0])
         cA2 = np.array(self.__exp_data.iloc[:, 1])
         tS = np.array(self.__exp_data.iloc[:, 2])
@@ -170,7 +181,8 @@ class oscillation:
 
             penalty = 1e10 * np.sum(np.minimum(self.__params, 0) ** 2)
 
-            obj = np.sum((c_all_A2[0] - cA2)**2 + (c_all_S[1] - cS)**2) + penalty
+            obj = np.sum((c_all_A2[0] - cA2)**2 +
+                         (c_all_S[1] - cS)**2) + penalty
             return obj
 
         params_old = self.__params
@@ -186,11 +198,15 @@ class oscillation:
         if overwrite == False:
             self.__params = params_old
         return opt_result
+#---------------------------------------------------#
+
+
+#-----------Time-delayed oscillation model-----------#
 
 
 class delayed_oscillation(oscillation):
-    def __init__(self, model, delay, params, consts, init_cond, calc_all):
-        super().__init__(model, params, consts, init_cond, calc_all)
+    def __init__(self, model: dict, delay: list | np.ndarray, params: list | np.ndarray, consts: list | np.ndarray, init_cond: list | np.ndarray):
+        super().__init__(model, params, consts, init_cond)
         self.__delay = delay
         self.dde = self._oscillation__model(self.__delay)
 
@@ -205,10 +221,13 @@ class delayed_oscillation(oscillation):
         self.__delay = delay
         self.dde = self._oscillation__model(self.__delay)
 
-    def simulate(self, t=10, exp=False, nvars=2):
+    def simulate(self, t=10, exp=False, *nvars):
+        """
+        Solve the time-delayed kinetic model, return jitcdde solution and time points in a tuple
+        """
         params_pass = np.hstack(
             (self._oscillation__params, self._oscillation__consts))
-        
+
         if exp == True:
             t_end = self._oscillation__exp_data.iloc[-1, 0]
             t_eval = np.linspace(0, t_end, int(70*t_end))
@@ -226,6 +245,11 @@ class delayed_oscillation(oscillation):
         return (sol, t_eval)
 
     def plot(self, t=10, exp=False, ylim=None, nvars=2):
+        """
+        Plot the simulation or the comparison between the simulation and the experimental data.
+        
+        The value of nvars is the number of species in the experimental data. Only required when exp=True.
+        """
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
@@ -234,11 +258,12 @@ class delayed_oscillation(oscillation):
                 sol, self._oscillation__consts, self._oscillation__params)
             fig, axes = plt.subplots(nvars, 1, figsize=(5, 2 * nvars))
             for ax in axes:
-                #Expereimental data
+                # Expereimental data
                 ax.plot(
-                    self._oscillation__exp_data.iloc[:, 2*i], self._oscillation__exp_data.iloc[:, 2*i+1],
+                    self._oscillation__exp_data.iloc[:, 2 *
+                                                     i], self._oscillation__exp_data.iloc[:, 2*i+1],
                     label=f'exp-{self._oscillation__species[i]}', color=color[i])
-                #Simulation
+                # Simulation
                 ax.plot(t, c[i], label=f'sim-{self._oscillation__species[i]}',
                         linestyle='--', color=color[i])
                 if ylim != None:
@@ -253,7 +278,7 @@ class delayed_oscillation(oscillation):
             c = self._oscillation__calc_all(
                 sol, self._oscillation__consts, self._oscillation__params)
             fig, axes = plt.subplots(2, 2, figsize=(7, 5))
-            #Simulations only
+            # Simulations only
             for ax, y in zip(axes.flatten(), c):
                 ax.plot(
                     t, y, label=self._oscillation__species[i], color=color[i])
@@ -267,6 +292,11 @@ class delayed_oscillation(oscillation):
         return fig, axes
 
     def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2):
+        """
+        Plot the interactive plot with tunable parameters. Only works for 4, 5 and 6 parameters model.
+        
+        The value of nvars is the number of species in the experimental data. Only required when exp=True.
+        """
         if len(self._oscillation__params) == 4:
             def plot_temp(alpha, beta, theta, phi):
                 params = [alpha, beta, theta, phi]
