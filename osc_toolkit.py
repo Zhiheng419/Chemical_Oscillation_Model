@@ -221,7 +221,7 @@ class delayed_oscillation(oscillation):
         self._delay = delay
         self.dde = self._model(self._delay)
 
-    def simulate(self, t=10, exp=False, *nvars):
+    def simulate(self, t=10, exp=False, nvars=2):
         """
         Solve the time-delayed kinetic model, return jitcdde solution and time points in a tuple
         """
@@ -277,9 +277,9 @@ class delayed_oscillation(oscillation):
             sol, t = self.simulate(t, exp=exp, nvars=nvars)
             c = self._calc_all(
                 sol, self._consts, self._params)
-            fig, axes = plt.subplots(2, 2, figsize=(7, 5))
+            fig, axes = plt.subplots(nvars, 1, figsize=(5, 2 * nvars))
             # Simulations only
-            for ax, y in zip(axes.flatten(), c):
+            for ax, y in zip(axes, c):
                 ax.plot(
                     t, y, label=self._species[i], color=color[i])
                 if ylim != None:

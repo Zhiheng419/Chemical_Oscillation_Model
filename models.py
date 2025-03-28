@@ -194,7 +194,7 @@ delayed_full_FTC = {'model': delayed_full_model, 'calc_all': calc_all_delayed_fu
                     'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m. 2 delays: td1, td2. 3 vars: cA2, cS, cO'}
 # ------------------------------------------------------#
 
-# ------------------ Delayed full FTC model with Hill function ------------------#
+# ------------------ Delayed full FTC model ------------------#
 
 
 def delayed_full_first_order_model(delays):
