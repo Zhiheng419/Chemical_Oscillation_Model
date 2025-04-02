@@ -23,7 +23,7 @@ class oscillation:
         self._init_cond = init_cond
 
         # Essential information
-        self._species = ['A2', 'S_sum', 'A', 'O']
+        self._species = ['$c_{A_2}$', '$c_S$', '$c_A$', '$c_O$']
         self._info = model['info']
 
         # Experimental data
@@ -91,8 +91,8 @@ class oscillation:
             fig, axes = plt.subplots(2, 1, figsize=(5, 5))
             for ax in axes:
                 ax.plot(
-                    self._exp_data.iloc[:, 2*i], self._exp_data.iloc[:, 2*i+1], label=f'exp_{self._species[i]}', color=color[i])
-                ax.plot(sol.t, c[i], label=self._species[i],
+                    self._exp_data.iloc[:, 2*i], self._exp_data.iloc[:, 2*i+1], label=f'{self._species[i]}(exp)', color=color[i])
+                ax.plot(sol.t, c[i], label=f'{self._species[i]}(sim)',
                         linestyle='--', color=color[i])
                 if ylim != None:
                     ax.set_ylim(0, ylim)
@@ -221,7 +221,7 @@ class delayed_oscillation(oscillation):
         self._delay = delay
         self.dde = self._model(self._delay)
 
-    def simulate(self, t=10, exp=False, nvars=2):
+    def simulate(self, t=10, exp=False, nvars=2, acc=80):
         """
         Solve the time-delayed kinetic model, return jitcdde solution and time points in a tuple
         """
@@ -230,10 +230,10 @@ class delayed_oscillation(oscillation):
 
         if exp == True:
             t_end = self._exp_data.iloc[-1, 0]
-            t_eval = np.linspace(0, t_end, int(70*t_end))
+            t_eval = np.linspace(0, t_end, int(acc*t_end))
             self.dde.constant_past(self._init_cond)
         else:
-            t_eval = np.linspace(0, t, int(70*t))
+            t_eval = np.linspace(0, t, int(acc*t))
             self.dde.constant_past(self._init_cond)
 
         self.dde.reset_integrator()
@@ -244,7 +244,7 @@ class delayed_oscillation(oscillation):
 
         return (sol, t_eval)
 
-    def plot(self, t=10, exp=False, ylim=None, nvars=2):
+    def plot(self, t=10, exp=False, ylim=None, nvars=2, acc=80):
         """
         Plot the simulation or the comparison between the simulation and the experimental data.
 
@@ -253,7 +253,7 @@ class delayed_oscillation(oscillation):
         i = 0
         color = ['purple', 'b', 'r', 'g']
         if exp == True:
-            sol, t = self.simulate(exp=exp, nvars=nvars)
+            sol, t = self.simulate(exp=exp, nvars=nvars, acc=acc)
             c = self._calc_all(
                 sol, self._consts, self._params)
             fig, axes = plt.subplots(nvars, 1, figsize=(5, 2 * nvars))
@@ -262,9 +262,9 @@ class delayed_oscillation(oscillation):
                 ax.plot(
                     self._exp_data.iloc[:, 2 *
                                         i], self._exp_data.iloc[:, 2*i+1],
-                    label=f'exp-{self._species[i]}', color=color[i])
+                    label=f'{self._species[i]}(exp)', color=color[i])
                 # Simulation
-                ax.plot(t, c[i], label=f'sim-{self._species[i]}',
+                ax.plot(t, c[i], label=f'{self._species[i]}(sim)',
                         linestyle='--', color=color[i])
                 if ylim != None:
                     ax.set_ylim(0, ylim)
@@ -274,7 +274,7 @@ class delayed_oscillation(oscillation):
             fig.supylabel('Normalized Conc')
             plt.tight_layout()
         else:
-            sol, t = self.simulate(t, exp=exp, nvars=nvars)
+            sol, t = self.simulate(t, exp=exp, nvars=nvars, acc=acc)
             c = self._calc_all(
                 sol, self._consts, self._params)
             fig, axes = plt.subplots(nvars, 1, figsize=(5, 2 * nvars))
@@ -291,7 +291,7 @@ class delayed_oscillation(oscillation):
             plt.tight_layout()
         return fig, axes
 
-    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2):
+    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2, acc=80):
         """
         Plot the interactive plot with tunable parameters. Only works for 4, 5 and 6 parameters model.
 
@@ -302,7 +302,7 @@ class delayed_oscillation(oscillation):
                 params = [alpha, beta, theta, phi]
                 params_old = self._params
                 self.set_params(params)
-                self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
+                self.plot(t, exp=exp, ylim=ylim, nvars=nvars, acc=acc)
                 self.set_params(params_old)
                 print(params)
         elif len(self._params) == 5:
@@ -310,7 +310,7 @@ class delayed_oscillation(oscillation):
                 params = [alpha, beta, theta, phi, K]
                 params_old = self._params
                 self.set_params(params)
-                self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
+                self.plot(t, exp=exp, ylim=ylim, nvars=nvars, acc=acc)
                 self.set_params(params_old)
                 print(params)
         elif len(self._params) == 6:
@@ -318,7 +318,7 @@ class delayed_oscillation(oscillation):
                 params = [alpha, beta, theta, phi, K, kappa]
                 params_old = self._params
                 self.set_params(params)
-                self.plot(t, exp=exp, ylim=ylim, nvars=nvars)
+                self.plot(t, exp=exp, ylim=ylim, nvars=nvars, acc=acc)
                 self.set_params(params_old)
                 print(params)
 

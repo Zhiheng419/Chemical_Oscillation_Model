@@ -78,12 +78,7 @@ full_FTC = {'model': full_model_FTC, 'calc_all': calc_all_full_model_FTC,
 
 
 def full_model_FTC_first_order(t, vars, params):
-    """
-    Full model of the FTC's model. The model has 5 parameters: alpha, beta, theta, phi, k;
-    3 constants: lam, m, ep; and 3 variables: cA2, cS, cO.
-    In this model quasi-steady state approximation is not used on cO, but it is used on cM.
-    """
-    alpha, beta, theta, phi, lam, m = params
+    alpha, beta, theta, phi, ep, lam, m = params
     cA2, cS, cO = vars
 
     cA = 2 * (1 - cA2) - lam * (cS + cS**m)
@@ -92,13 +87,13 @@ def full_model_FTC_first_order(t, vars, params):
         alpha * cS**m * cA2 - theta * cA2
     dcSdt = alpha/lam * cS**m * cA2 - beta * \
         cS**m + theta/lam * cA2 - phi * cS
-    dcOdt = 1e3 * (1 - cO * cA)
+    dcOdt = ep * (1 - cO * cA)
 
     return dcA2dt, dcSdt, dcOdt
 
 
 full_FTC_first_order = {'model': full_model_FTC_first_order, 'calc_all': calc_all_full_model_FTC,
-                        'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
+                        'info': '5 params: alpha, beta, theta, phi, epslion. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
 # ------------------------------------------------------#
 
 # ------------------ Full FTC model with Hill function ------------------#
@@ -194,24 +189,24 @@ delayed_full_FTC = {'model': delayed_full_model, 'calc_all': calc_all_delayed_fu
                     'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m. 2 delays: td1, td2. 3 vars: cA2, cS, cO'}
 # ------------------------------------------------------#
 
-# ------------------ Delayed full FTC model ------------------#
+# ------------------ Delayed full FTC model first order------------------#
 
 
 def delayed_full_first_order_model(delays):
     td1, td2 = delays
-    alpha, beta, theta, phi, lam, m = symbols('alpha beta theta phi lam m')
+    alpha, beta, theta, phi, ep, lam, m = symbols('alpha beta theta phi ep lam m')
     cA = 2 * (1 - y(0)) - lam * (y(1) + y(1)**m)
     dcA2dt = cA * y(2) - alpha * y(0) * y(1, t-td2)**m - theta * y(0)
     dcSdt = alpha/lam * y(0) * y(1, t-td2)**m - beta * \
         y(1, t-td1)**m + theta/lam * y(0) - phi * y(1)
-    dcOdt = 1e3 * (1 - y(2) * cA)
+    dcOdt = ep * (1 - y(2) * cA)
     dde = jitcdde([dcA2dt, dcSdt, dcOdt], control_pars=[
-                  alpha, beta, theta, phi, lam, m])
+                  alpha, beta, theta, phi, ep, lam, m])
     return dde
 
 
 delayed_full_first_order = {'model': delayed_full_first_order_model, 'calc_all': calc_all_delayed_full_model,
-                            'info': '4 params: alpha, beta, theta, phi. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
+                            'info': '5 params: alpha, beta, theta, phi, epsilon. 2 consts: lam, m, 3 vars: cA2, cS, cO'}
 # ------------------------------------------------------#
 
 # ------------------ Delayed full FTC model with oxidant consumption ------------------#
