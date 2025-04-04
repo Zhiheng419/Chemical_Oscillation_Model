@@ -7,6 +7,30 @@ from IPython.display import display
 import ipywidgets as widgets
 import pandas as pd
 
+def input_expdata(files: str, params: list|np.ndarray) -> pd.DataFrame :
+    """
+    Read the experimental data from a csv file and normalize the data. The data should be in the format of [time, conc, time, conc,...].
+    The species should be in the order of A2, S, A (if applicable).
+    Parameters are CMC and input rate (rext)."""
+    df = pd.read_csv(files)
+    cmc, rext = params
+    col_titles = ['tA2', 'cA2', 'tS', 'cS', 'tA', 'cA']
+    df.columns = col_titles[:len(df.columns)]
+    
+    cA2_tol = df.loc[0, 'cA2'] + df.loc[0, 'cA'] / 2 if 'cA' in df.columns else df.loc[0, 'cA2']
+    tau = cA2_tol / rext
+    print(f'cA2_tol = {cA2_tol:.3f}, tau = {tau:.3f}')
+
+    df['cA2'] /= cA2_tol
+    if 'cA' in df.columns:
+        df['cA'] /= cA2_tol
+    df['cS'] /= cmc
+    df['tA2'] /= tau
+    df['tS'] /= tau
+    if 'tA' in df.columns:
+        df['tA'] /= tau
+    
+    return df
 
 # -----------Non-delayed oscillation model-----------#
 
