@@ -102,12 +102,12 @@ full_FTC_first_order = {'model': full_model_FTC_first_order, 'calc_all': calc_al
 def approx_model_Hill(t, vars, params):
     def Hill(x, m, k):
         return x**m/(k**m + x**m)
-    alpha, beta, theta, phi, k, lam, m, cmc = params
-    ep = Hill(cmc, m, k)
+    alpha, beta, theta, phi, k, lam, m = params
+    ep = 1 / Hill(1, m, k)
     C_A2, C_S = vars
-    dC_A2dt = 1 - alpha/ep * C_A2 * Hill(C_S, m, k) - theta * C_A2
-    dC_Sdt = alpha/(lam * ep) * C_A2 * Hill(C_S, m, k) - beta / \
-        ep * Hill(C_S, m, k) + theta/lam * C_A2 - phi * C_S
+    C_M = ep * Hill(C_S, m, k)
+    dC_A2dt = 1 - alpha * C_A2 * C_M - theta * C_A2
+    dC_Sdt = alpha/lam * C_A2 * C_M - beta * C_M + theta/lam * C_A2 - phi * C_S
     return (dC_A2dt, dC_Sdt)
 
 
@@ -115,18 +115,18 @@ def calc_all_approx_model_Hill(sol, consts, params):
     def Hill(x, m, k):
         return x**m/(k**m + x**m)
     alpha, beta, theta, phi, k = params
-    lam, m, cmc = consts
-    ep = Hill(cmc, m, k)
+    lam, m = consts
+    ep = 1 / Hill(1, m, k)
     C_A2 = sol.y[0]
     C_S = sol.y[1]
-    C_M = 1/ep * Hill(C_S, m, k)
+    C_M = ep * Hill(C_S, m, k)
     C_A = 2 * (1 - C_A2) - lam * (C_S + C_M)
-    C_O = 1 / (2 * (1 - C_A2) - lam * (C_S + C_M)) ** 2
+    C_O = 1 / C_A
     return (C_A2, C_S + C_M, C_A, C_O)
 
 
 approx_Hill = {'model': approx_model_Hill, 'calc_all': calc_all_approx_model_Hill,
-               'info': '5 params: alpha, beta, theta, phi, k. 3 consts: lam, m, cmc 2 vars: cA2, cS'}
+               'info': '5 params: alpha, beta, theta, phi, k. 2 consts: lam, m. 2 vars: cA2, cS'}
 # ------------------------------------------------------#
 
 # Delayed models realized with jitcdde
