@@ -152,15 +152,23 @@ class oscillation:
                 self._params = params_old
                 print(params)
         elif len(self._params) == 5:
-            def plot_temp(alpha, beta, theta, phi, K):
-                params = [alpha, beta, theta, phi, K]
+            def plot_temp(alpha, beta, theta, phi, ep):
+                params = [alpha, beta, theta, phi, ep]
+                params_old = self._params
+                self._params = params
+                self.plot(t, exp=exp, ylim=ylim)
+                self._params = params_old
+                print(params)
+        elif len(self._params) == 6:
+            def plot_temp(alpha, beta, theta, phi, ep, delta):
+                params = [alpha, beta, theta, phi, ep, delta]
                 params_old = self._params
                 self._params = params
                 self.plot(t, exp=exp, ylim=ylim)
                 self._params = params_old
                 print(params)
 
-        params_list = ['alpha', 'beta', 'theta', 'phi', 'K']
+        params_list = ['alpha', 'beta', 'theta', 'phi', 'ep', 'delta']
         sliders = []
 
         for i in range(len(self._params)):
@@ -173,7 +181,10 @@ class oscillation:
                 plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3])
         elif len(self._params) == 5:
             interactive_widget = widgets.interactive(
-                plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4])
+                plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], ep=sliders[4])
+        elif len(self._params) == 6:
+            interactive_widget = widgets.interactive(
+                plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], ep=sliders[4], delta=sliders[5])
         display(interactive_widget)
 
     # Fitting
