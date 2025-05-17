@@ -319,3 +319,33 @@ def calc_all_delayed_full_model_Hill_consumeO(sol, consts, params):
 delayed_full_FTC_Hill_consumeO = {'model': delayed_full_model_Hill_consumeO, 'calc_all': calc_all_delayed_full_model_Hill_consumeO,
                                   'info': '6 params: alpha, beta, theta, phi, k, kappa. 3 consts: lam, m, cmc. 2 delays: td1, td2. 3 vars: cA2, cS, cO'}
 # ------------------------------------------------------#
+
+# ------------------ Delayed full 4 vars model ------------------#
+def delayed_full_model_4vars(delays):
+    td1, td2 = delays
+    alpha, beta, theta, phi, ep, delta, lam, m = symbols(
+        'alpha beta theta phi epsilon delta lam m')
+    
+    cA = 2 * (1 - y(0)) - lam * (y(1) + y(3))
+    
+    dcA2dt = y(2) * cA - alpha * y(0) * y(3, t-td2) - theta * y(0)
+    dcSdt = alpha/lam * y(0) * y(3, t-td2) + theta/lam * y(0) - phi * y(1) - delta * (y(1)**m - y(3))
+    dcOdt = ep * (1 - y(2) * cA)
+    dcMdt = delta * (y(1)**m - y(3)) - beta * y(3, t-td1)
+
+    dde = jitcdde([dcA2dt, dcSdt, dcOdt, dcMdt], control_pars=[
+                  alpha, beta, theta, phi, ep, delta, lam, m])
+    return dde
+
+def calc_all_delayed_full_model_4vars(sol, consts, *params):
+    lam, m = consts
+    cA2 = sol[:, 0]
+    cS = sol[:, 1]
+    cO = sol[:, 2]
+    cM = sol[:, 3]
+    cA = 2 * (1 - cA2) - lam * (cS + cM)
+    return np.array([cA2, cS + cM, cA, cO])
+
+delayed_full_4vars = {'model': delayed_full_model_4vars, 'calc_all': calc_all_delayed_full_model_4vars,
+            'info': '6 params: alpha, beta, theta, phi, ep, delta. 2 consts: lam, m, 4 vars: cA2, cS, cO, cM'}
+# ------------------------------------------------------#
