@@ -7,7 +7,8 @@ from IPython.display import display
 import ipywidgets as widgets
 import pandas as pd
 
-def input_expdata(files: str, params: list|np.ndarray) -> pd.DataFrame :
+
+def input_expdata(files: str, params: list | np.ndarray) -> pd.DataFrame:
     """
     Read the experimental data from a csv file and normalize the data. The data should be in the format of [time, conc, time, conc,...].
     The species should be in the order of A2, S, A (if applicable).
@@ -16,8 +17,9 @@ def input_expdata(files: str, params: list|np.ndarray) -> pd.DataFrame :
     cmc, rext = params
     col_titles = ['tA2', 'cA2', 'tS', 'cS', 'tA', 'cA']
     df.columns = col_titles[:len(df.columns)]
-    
-    cA2_tol = df.loc[0, 'cA2'] + df.loc[0, 'cA'] / 2 if 'cA' in df.columns else df.loc[0, 'cA2']
+
+    cA2_tol = df.loc[0, 'cA2'] + df.loc[0, 'cA'] / \
+        2 if 'cA' in df.columns else df.loc[0, 'cA2']
     tau = cA2_tol / rext
     print(f'cA2_tol = {cA2_tol:.3f}, tau = {tau:.3f}')
 
@@ -29,7 +31,7 @@ def input_expdata(files: str, params: list|np.ndarray) -> pd.DataFrame :
     df['tS'] /= tau
     if 'tA' in df.columns:
         df['tA'] /= tau
-    
+
     return df
 
 # -----------Non-delayed oscillation model-----------#
@@ -256,7 +258,7 @@ class delayed_oscillation(oscillation):
         self._delay = delay
         self.dde = self._model(self._delay)
 
-    def simulate(self, t=10, exp=False, nvars=2, acc=80):
+    def simulate(self, t=10, exp=False, nvars=2, acc=80, fit=False):
         """
         Solve the time-delayed kinetic model, return jitcdde solution and time points in a tuple
         """
@@ -267,6 +269,9 @@ class delayed_oscillation(oscillation):
             t_end = self._exp_data.iloc[-1, 0]
             t_eval = np.linspace(0, t_end, int(acc*t_end))
             self.dde.constant_past(self._init_cond)
+            if fit == True:
+                t_exp = np.array(self._exp_data.iloc[:, 0])
+                t_eval = np.union1d(t_eval, t_exp)
         else:
             t_eval = np.linspace(0, t, int(acc*t))
             self.dde.constant_past(self._init_cond)
@@ -274,6 +279,8 @@ class delayed_oscillation(oscillation):
         self.dde.reset_integrator()
         self.dde.set_parameters(params_pass)
         self.dde.adjust_diff()
+        self.dde.step_on_discontinuities()
+
 
         sol = np.array([self.dde.integrate(time) for time in t_eval])
 
@@ -326,7 +333,7 @@ class delayed_oscillation(oscillation):
             plt.tight_layout()
         return fig, axes
 
-    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2, acc=80):
+    def interactive_plot(self, t=10, ran=5, step=0.05, exp=False, ylim=None, nvars=2, acc=80, rext=1):
         """
         Plot the interactive plot with tunable parameters. Only works for 4, 5 and 6 parameters model.
 
@@ -338,26 +345,23 @@ class delayed_oscillation(oscillation):
                 params_old = self._params
                 self.set_params(params)
                 self.plot(t, exp=exp, ylim=ylim, nvars=nvars, acc=acc)
-                self.set_params(params_old)
-                print(params)
+                print(np.array(params)*rext)
         elif len(self._params) == 5:
             def plot_temp(alpha, beta, theta, phi, K):
                 params = [alpha, beta, theta, phi, K]
                 params_old = self._params
                 self.set_params(params)
                 self.plot(t, exp=exp, ylim=ylim, nvars=nvars, acc=acc)
-                self.set_params(params_old)
-                print(params)
+                print(np.array(params)*rext)
         elif len(self._params) == 6:
             def plot_temp(alpha, beta, theta, phi, K, kappa):
                 params = [alpha, beta, theta, phi, K, kappa]
                 params_old = self._params
                 self.set_params(params)
                 self.plot(t, exp=exp, ylim=ylim, nvars=nvars, acc=acc)
-                self.set_params(params_old)
-                print(params)
+                print(np.array(params)*rext)
 
-        params_list = ['alpha', 'beta', 'theta', 'phi', 'k', 'kappa']
+        params_list = ['alpha', 'beta', 'theta', 'phi', 'epsilon', 'delta']
         sliders = []
 
         for i in range(len(self._params)):
@@ -375,6 +379,49 @@ class delayed_oscillation(oscillation):
             interactive_widget = widgets.interactive(
                 plot_temp, alpha=sliders[0], beta=sliders[1], theta=sliders[2], phi=sliders[3], K=sliders[4], kappa=sliders[5])
         display(interactive_widget)
+
+    def fit(self, method):
+        alpha, beta, theta, phi, ep, delta = self._params
+
+        # params are alpha, beta, theta, phi. epsilon and delta are fixed.
+        def objective(params):
+            alpha, beta, theta, phi = params
+            ep, delta = self._params[-2:]
+            self.set_params([alpha, beta, theta, phi, ep, delta])
+            sol, t_sim = self.simulate(exp=True, fit=True)
+
+            c = self._calc_all(sol, self._consts, self._params)
+            cS = c[1]
+            t_exp = self._exp_data['tS']
+
+            t_exp = np.round(t_exp, 10)
+            t_sim = np.round(t_sim, 10)
+
+            indices = np.nonzero(np.in1d(t_sim, t_exp))[0]
+            cS_sim = cS[indices]
+
+            cS_exp = self._exp_data['cS']
+            loss = np.mean((cS_exp - cS_sim)**2)
+
+            print(
+            f'alpha = {params[0]:.3f}, beta = {params[1]:.3f}, theta = {params[2]:.3f}, phi = {params[3]:.3f}')
+
+            plt.plot(t_exp, cS_sim, c='b')
+            plt.plot(t_exp, cS_exp, c='r')
+
+            return loss
+
+        bounds = [(1e-3, None), (1e-3, None), (1e-3, None), (1e-3, None)]
+        if method == 'LBFGSB':
+            result = sp.optimize.minimize(objective, x0=[
+                                      alpha, beta, theta, phi], method='L-BFGS-B', bounds=bounds, options={'gtol': 1e-8, 'maxiter': 100, 'disp': True})
+        elif method == 'NM':
+            result = sp.optimize.minimize(objective, x0=[
+                                      alpha, beta, theta, phi], method='Nelder-Mead', tol=1e-6, options={'maxiter': 1000})
+        print(result)
+        self.plot(exp=True)
+
+
 # ---------------------------------------------------#
 
 # -----------Mixed oscillation model: 2 surfactants-----------#
@@ -428,7 +475,7 @@ class mixed_oscillation(oscillation):
         fig.supylabel('Normalized Concentration')
         plt.tight_layout()
         return fig, ax
-    
+
     def interactive_plot(self):
         pass
 
