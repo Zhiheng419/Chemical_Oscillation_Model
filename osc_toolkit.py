@@ -88,7 +88,7 @@ class oscillation:
 
     # Simulation and visualization
 
-    def simulate(self, t=10, npoints=500, init_cond=None, method='RK45'):
+    def simulate(self, t=10, npoints=500, init_cond=None, method='RK45', calcall=False):
         """
         Solve the kinetic model, return scipy.integrate.solve_ivp solution
         """
@@ -105,7 +105,11 @@ class oscillation:
 
         sol = solve_ivp(model_partial, t_span=t_span,
                         y0=y0, method=method, t_eval=t_eval, rtol=1e-6, atol=1e-8)
-        return sol
+        if calcall:
+            c = self._calc_all(sol, self._consts, self._params)
+            return c, t_eval
+        else:
+            return sol
 
     def plot(self, t=10, exp=False, method='RK45', ylim=None, npoints=500):
         i = 0
@@ -258,7 +262,7 @@ class delayed_oscillation(oscillation):
         self._delay = delay
         self.dde = self._model(self._delay)
 
-    def simulate(self, t=10, exp=False, nvars=2, acc=80, fit=False):
+    def simulate(self, t=10, exp=False, nvars=2, acc=80, fit=False, calcall=False):
         """
         Solve the time-delayed kinetic model, return jitcdde solution and time points in a tuple
         """
@@ -283,8 +287,12 @@ class delayed_oscillation(oscillation):
 
 
         sol = np.array([self.dde.integrate(time) for time in t_eval])
-
-        return (sol, t_eval)
+        
+        if calcall:
+            c = self._calc_all(sol, self._consts, self._params)
+            return c, t_eval
+        else:
+            return sol, t_eval
 
     def plot(self, t=10, exp=False, ylim=None, nvars=2, acc=80):
         """

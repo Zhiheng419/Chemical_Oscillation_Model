@@ -129,6 +129,33 @@ approx_Hill = {'model': approx_model_Hill, 'calc_all': calc_all_approx_model_Hil
                'info': '5 params: alpha, beta, theta, phi, k. 2 consts: lam, m. 2 vars: cA2, cS'}
 # ------------------------------------------------------#
 
+# ----------------------Full model with modified micelle changing rate--------------------------------#
+def full_model_4vars(t, vars, params):
+    alpha, beta, theta, phi, ep, delta, lam, m = params
+    cA2, cS, cO, cM = vars
+
+    cA = 2 * (1 - cA2) - lam * (cS + cM)
+    dcA2dt = cO * cA - alpha * cM * cA2 - theta * cA2
+    dcSdt = alpha/lam * cM * cA2 + theta/lam * cA2 - phi * cS - delta * (cS**m - cM)
+    dcOdt = ep * (1 - cO * cA)
+    dcMdt = delta * (cS**m - cM) - beta * cM
+
+    return dcA2dt, dcSdt, dcOdt, dcMdt
+
+def calc_all_full_model_4vars(sol, const, *params):
+    """
+    Receive the solution of the full model and return the values of cA2, cS_sum, cA, cO.
+    """
+    lam, m = const
+    cA2, cS, cO, cM = sol.y
+    cS_sum = cS + cM
+    cA = 2 * (1 - cA2) - lam * (cS_sum)
+    return cA2, cS_sum, cA, cO
+
+full_model_4vars_dict = {'model': full_model_4vars, 'calc_all': calc_all_full_model_4vars,
+            'info': '6 params: alpha, beta, theta, phi, ep, delta. 2 consts: lam, m, 4 vars: cA2, cS, cO, cM'}
+# ------------------------------------------------------#
+
 # Delayed models realized with jitcdde
 
 # ------------------ Delayed approx FTC model ------------------#
