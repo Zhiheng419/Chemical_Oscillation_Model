@@ -130,17 +130,21 @@ approx_Hill = {'model': approx_model_Hill, 'calc_all': calc_all_approx_model_Hil
 # ------------------------------------------------------#
 
 # ----------------------Full model with modified micelle changing rate--------------------------------#
+
+
 def full_model_4vars(t, vars, params):
     alpha, beta, theta, phi, ep, delta, lam, m = params
     cA2, cS, cO, cM = vars
 
     cA = 2 * (1 - cA2) - lam * (cS + cM)
     dcA2dt = cO * cA - alpha * cM * cA2 - theta * cA2
-    dcSdt = alpha/lam * cM * cA2 + theta/lam * cA2 - phi * cS - delta * (cS**m - cM)
+    dcSdt = alpha/lam * cM * cA2 + theta/lam * \
+        cA2 - phi * cS - delta * (cS**m - cM)
     dcOdt = ep * (1 - cO * cA)
     dcMdt = delta * (cS**m - cM) - beta * cM
 
     return dcA2dt, dcSdt, dcOdt, dcMdt
+
 
 def calc_all_full_model_4vars(sol, const, *params):
     """
@@ -152,8 +156,9 @@ def calc_all_full_model_4vars(sol, const, *params):
     cA = 2 * (1 - cA2) - lam * (cS_sum)
     return cA2, cS_sum, cA, cO
 
+
 full_model_4vars_dict = {'model': full_model_4vars, 'calc_all': calc_all_full_model_4vars,
-            'info': '6 params: alpha, beta, theta, phi, ep, delta. 2 consts: lam, m, 4 vars: cA2, cS, cO, cM'}
+                         'info': '6 params: alpha, beta, theta, phi, ep, delta. 2 consts: lam, m, 4 vars: cA2, cS, cO, cM'}
 # ------------------------------------------------------#
 
 # Delayed models realized with jitcdde
@@ -221,7 +226,8 @@ delayed_full_FTC = {'model': delayed_full_model, 'calc_all': calc_all_delayed_fu
 
 def delayed_full_first_order_model(delays):
     td1, td2 = delays
-    alpha, beta, theta, phi, ep, lam, m = symbols('alpha beta theta phi ep lam m')
+    alpha, beta, theta, phi, ep, lam, m = symbols(
+        'alpha beta theta phi ep lam m')
     cA = 2 * (1 - y(0)) - lam * (y(1) + y(1)**m)
     dcA2dt = cA * y(2) - alpha * y(0) * y(1, t-td2)**m - theta * y(0)
     dcSdt = alpha/lam * y(0) * y(1, t-td2)**m - beta * \
@@ -348,21 +354,25 @@ delayed_full_FTC_Hill_consumeO = {'model': delayed_full_model_Hill_consumeO, 'ca
 # ------------------------------------------------------#
 
 # ------------------ Delayed full 4 vars model ------------------#
+
+
 def delayed_full_model_4vars(delays):
     td1, td2 = delays
     alpha, beta, theta, phi, ep, delta, lam, m = symbols(
         'alpha beta theta phi epsilon delta lam m')
-    
+
     cA = 2 * (1 - y(0)) - lam * (y(1) + y(3))
-    
+
     dcA2dt = y(2) * cA - alpha * y(0) * y(3, t-td2) - theta * y(0)
-    dcSdt = alpha/lam * y(0) * y(3, t-td2) + theta/lam * y(0) - phi * y(1) - delta * (y(1)**m - y(3))
+    dcSdt = alpha/lam * y(0) * y(3, t-td2) + theta/lam * \
+        y(0) - phi * y(1) - delta * (y(1)**m - y(3))
     dcOdt = ep * (1 - y(2) * cA)
     dcMdt = delta * (y(1)**m - y(3)) - beta * y(3, t-td1)
 
     dde = jitcdde([dcA2dt, dcSdt, dcOdt, dcMdt], control_pars=[
                   alpha, beta, theta, phi, ep, delta, lam, m])
     return dde
+
 
 def calc_all_delayed_full_model_4vars(sol, consts, *params):
     lam, m = consts
@@ -373,6 +383,56 @@ def calc_all_delayed_full_model_4vars(sol, consts, *params):
     cA = 2 * (1 - cA2) - lam * (cS + cM)
     return np.array([cA2, cS + cM, cA, cO])
 
+
 delayed_full_4vars = {'model': delayed_full_model_4vars, 'calc_all': calc_all_delayed_full_model_4vars,
-            'info': '6 params: alpha, beta, theta, phi, ep, delta. 2 consts: lam, m, 4 vars: cA2, cS, cO, cM'}
+                      'info': '6 params: alpha, beta, theta, phi, ep, delta. 2 consts: lam, m, 4 vars: cA2, cS, cO, cM'}
 # ------------------------------------------------------#
+
+#-------------------Delayed mixed models------------------
+def delayed_full_two_thiols_model(delays):
+    td1, td2 = delays
+    alpha1, beta1, theta1, phi1, ep1, delta1, alpha2, beta2, theta2, phi2, ep2, delta2, lam1, m1, lam2, m2 = \
+        symbols(
+            'alpha1 beta1 theta1 phi1 ep1 delta1 alpha2 beta2 theta2 phi2 ep2 delta2 lam1 m1 lam2 m2')
+
+    r = lam2/lam1
+    cA2, cS1, cS2, cM1, cM2, cO = y(0), y(1), y(2), y(3), y(4), y(5)
+    cM1_d1, cM1_d2 = y(3, t-td1), y(3, t-td2)
+    cM2_d1, cM2_d2 = y(4, t-td1), y(4, t-td2)
+    cA = 2 * (1 - cA2) - lam1 * (cS1 + cM1) - lam2 * (cS2 + cM2)
+
+    dcA2dt = cO * cA - 1/2 * alpha1 * (cM1_d2 + r * cM2_d2) * cA2 - 1/2 * alpha2 * (
+        1/r * cM1_d2 + cM2_d2) * cA2 - 1/2 * (theta1 + theta2) * cA2
+    dcS1dt = 1/2 * theta1/lam1 * cA2 - 1/2 * phi1 * cS1 - 1/4 * \
+        (phi1 + phi2) * cS1 + 1/2 * alpha1/lam1 * \
+        (cM1_d2 + r * cM2_d2) * cA2 - delta1 * (cS1**m1 - cM1)
+    dcS2dt = 1/2 * theta2/lam2 * cA2 - 1/2 * phi2 * cS2 - 1/4 * \
+        (phi1 + phi2) * cS2 + 1/2 * alpha2/lam2 * \
+        (1/r * cM1_d2 + cM2_d2) * cA2 - delta2 * (cS2**m2 - cM2)
+    dcM1dt = delta1 * (cS1**m1 - cM1) - (beta1)/2 * \
+        cM1_d1 - 1/4 * (beta1 + beta2) * cM1_d1
+    dcM2dt = delta2 * (cS2**m2 - cM2) - (beta2)/2 * \
+        cM2_d1 - 1/4 * (beta1 + beta2) * cM2_d1
+    dcOdt = ep1 * (1 - cO * cA)
+    dde = jitcdde([dcA2dt, dcS1dt, dcS2dt, dcM1dt, dcM2dt, dcOdt], control_pars=[
+                  alpha1, beta1, theta1, phi1, ep1, delta1, alpha2, beta2, theta2, phi2, ep2, delta2, lam1, m1, lam2, m2])
+    return dde
+
+
+def calc_all_delayed_full_two_thiols(sol, consts, *params):
+    lam1, m1, lam2, m2 = consts
+    cA2 = sol[:, 0]
+    cS1 = sol[:, 1]
+    cS2 = sol[:, 2]
+    cM1 = sol[:, 3]
+    cM2 = sol[:, 4]
+    cO = sol[:, 5]
+    cS1_sum = cS1 + cM1
+    cS2_sum = cS2 + cM2
+    cA = 2 * (1 - cA2) - lam1 * cS1_sum - lam2 * cS2_sum
+    return [cA2, cS1_sum, cS2_sum, cA, cO]
+
+
+delayed_full_two_thiols = {'model': delayed_full_two_thiols_model, 'calc_all': calc_all_delayed_full_two_thiols,
+                           'info': '5*2 parameters, 2*2 constants, 4 species: A2, S1, S2, O'}
+#----------------------------------------------------------#

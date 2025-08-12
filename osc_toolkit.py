@@ -490,3 +490,46 @@ class mixed_oscillation(oscillation):
     def fit(self):
         pass
 # ---------------------------------------------------#
+
+#------------------Mixed delayed oscillation model-----------
+class mixed_delayed_oscillation(delayed_oscillation):
+    def __init__(self, model, delays, params1, params2, consts1, consts2, init_cond):
+
+        # Model and parameters
+        self._model = model['model']
+        self._delays = delays
+        self._params = np.concatenate((params1, params2))
+        self._consts = np.concatenate((consts1, consts2))
+        self._calc_all = model['calc_all']
+        self._init_cond = init_cond
+        self.dde = self._model(self._delays)
+
+        # Essential information
+        self._species = ['A2', 'S1', 'S2', 'A', 'O']
+        self._info = model['info']
+
+        # Experimental data
+        self._exp_data = None
+
+    def plot(self, t=10, exp=False, ylim=None, acc=80):
+        color = ['purple', 'b', 'lightskyblue', 'r', 'g']
+
+        sol, t = self.simulate(t, acc=acc)
+        c = self._calc_all(sol, self._consts, self._params)
+        fig, ax = plt.subplots(2, 2, figsize=(7, 5))
+
+        ax[0, 0].plot(t, c[0], label=self._species[0], color=color[0])
+        ax[0, 1].plot(t, c[1], label=self._species[1], color=color[1])
+        ax[0, 1].plot(t, c[2], label=self._species[2], color=color[2])
+        ax[1, 0].plot(t, c[3], label=self._species[3], color=color[3])
+        ax[1, 1].plot(t, c[4], label=self._species[4], color=color[4])
+
+        for a in ax.flatten():
+            if ylim != None:
+                ax.set_ylim(0, ylim)
+            a.legend(loc="upper right")
+            
+        fig.supxlabel('Normalized Time')
+        fig.supylabel('Normalized Concentration')
+        plt.tight_layout()
+        return fig, ax
